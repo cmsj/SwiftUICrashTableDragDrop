@@ -13,6 +13,8 @@
 // 5. Drag a file from Finder onto the empty table
 // 6. App will crash as soon as your mouse enters the table with: Swift/ContiguousArrayBuffer.swift:690: Fatal error: Index out of range
 
+// NOTE: You can also comment out the .dropDestination, uncomment .onInsert and reproduce the same way
+
 import SwiftUI
 
 enum DropItem: Codable, Transferable {
