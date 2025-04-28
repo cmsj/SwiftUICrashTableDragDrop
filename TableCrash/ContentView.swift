@@ -138,7 +138,9 @@ struct ContentView: View {
             }
             .disabled(viewModel.tree == nil)
             .opacity(viewModel.tree == nil ? 0.5 : 1)
-            // NOTE: Unclear if this relates to the crash
+            // NOTE: Unable to reproduce the crash if this is the only drag&drop target, but it's also
+            // insufficient for my needs because it doesn't tell me on which row the items was dropped
+            
 //            .onDrop(of: [.fileURL], isTargeted: nil, perform: { items, _ in
 //                print("Table: onDrop")
 //                guard viewModel.tree != nil else {
