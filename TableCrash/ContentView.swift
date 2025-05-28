@@ -8,12 +8,9 @@
 // Instructions to reproduce crash:
 // 1. Run app in Xcode
 // 2. Click "Create Tree"
-// 3. Drag a file from Finder onto the root node of the tree
-// 4. Click "Delete Tree"
-// 5. Drag a file from Finder onto the empty table
-// 6. App will crash as soon as your mouse enters the table with: Swift/ContiguousArrayBuffer.swift:690: Fatal error: Index out of range
-
-// NOTE: You can also comment out the .dropDestination, uncomment .onInsert and reproduce the same way
+// 3. Click "Delete Tree"
+// 4. Drag a file from Finder onto the empty table
+// 5. App will crash as soon as your mouse enters the table with: Swift/ContiguousArrayBuffer.swift:690: Fatal error: Index out of range
 
 import SwiftUI
 
@@ -33,13 +30,11 @@ enum DropItem: Codable, Transferable {
     }
 }
 
-@Observable
-class Node: Identifiable {
+struct Node: Identifiable {
     let id: UUID = UUID()
     let name: String
     let thing: String
     let otherThing: String
-    var children: [Node]? = nil
     var isExpanded: Bool = true
 
     init(name: String, thing: String, otherThing: String) {
@@ -47,77 +42,32 @@ class Node: Identifiable {
         self.thing = thing
         self.otherThing = otherThing
     }
-
-    func enableChildren() {
-        if children == nil {
-            children = []
-        }
-    }
-}
-
-@Observable
-class Tree {
-    var root: Node
-
-    init() {
-        root = Node(name: "root", thing: "1", otherThing: "a")
-        root.enableChildren()
-
-        let child = Node(name: "child", thing: "2", otherThing: "b")
-        child.enableChildren()
-        root.children?.append(child)
-    }
 }
 
 @Observable
 class TableViewModel {
-    var tree: Tree? = nil
+    var nodes: [Node]? = nil
 
     func createTree() {
-        tree = Tree()
+        nodes = []
+        let child1 = Node(name: "child1", thing: "1", otherThing: "a")
+        let child2 = Node(name: "child2", thing: "2", otherThing: "b")
+        nodes?.append(child1)
+        nodes?.append(child2)
     }
 
     func deleteTree() {
-        tree = nil
+        nodes = nil
     }
 
     func processDrop(of: [NSItemProvider]) {
-        tree?.root.children?.append(Node(name: "\(Int.random(in: 0..<100))", thing: "baz", otherThing: "foo"))
-    }
-}
-
-struct TableRowTreeContent: TableRowContent {
-    let node: Node?
-    let viewModel: TableViewModel
-
-    var tableRowBody: some TableRowContent<Node> {
-        ForEach(node?.children ?? []) { child in
-            if let _ = child.children {
-                @Bindable var child = child
-                DisclosureTableRow(child, isExpanded: $child.isExpanded) {
-                    TableRowTreeContent(node: child, viewModel: viewModel)
-                }
-                // NOTE: If this is present at all, the crash exists
-                .dropDestination(for: DropItem.self) { items in
-                    // NOTE: If this is enabled, the crash exists
-                    print("DisclosureTableRow: .dropDestination")
-                    viewModel.processDrop(of: [])
-                }
-            } else {
-                TableRow(child)
-            }
-        }
-        // NOTE: If this is present at all, the crash exists
-//        .onInsert(of: [.data]) { index, providers in
-//            // NOTE: If this is enabled, the crash exists
-//            print("TableRowTreeContent: .onInsert")
-//            viewModel.processDrop(of: [])
-//        }
+        nodes?.append(Node(name: "\(Int.random(in: 0..<100))", thing: "baz", otherThing: "foo"))
     }
 }
 
 struct ContentView: View {
     @State private var viewModel = TableViewModel()
+
     var body: some View {
         VStack {
             HStack {
@@ -134,22 +84,17 @@ struct ContentView: View {
                 TableColumn("Thing", value: \.thing)
                 TableColumn("Other Thing", value: \.otherThing)
             } rows: {
-                TableRowTreeContent(node: viewModel.tree?.root, viewModel: viewModel)
+                ForEach(viewModel.nodes ?? []) { node in
+                    TableRow(node)
+                        .dropDestination(for: DropItem.self) { items in
+                            // NOTE: If this is enabled, the crash exists
+                            print("DisclosureTableRow: .dropDestination")
+                            viewModel.processDrop(of: [])
+                        }
+                }
             }
-            .disabled(viewModel.tree == nil)
-            .opacity(viewModel.tree == nil ? 0.5 : 1)
-            // NOTE: Unable to reproduce the crash if this is the only drag&drop target, but it's also
-            // insufficient for my needs because it doesn't tell me on which row the items was dropped
-            
-//            .onDrop(of: [.fileURL], isTargeted: nil, perform: { items, _ in
-//                print("Table: onDrop")
-//                guard viewModel.tree != nil else {
-//                    print("No tree yet")
-//                    return false
-//                }
-//                viewModel.processDrop(of: items)
-//                return true
-//            })
+            .disabled(viewModel.nodes == nil)
+            .opacity(viewModel.nodes == nil ? 0.5 : 1)
         }
         .padding()
     }
